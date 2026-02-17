@@ -1,0 +1,4 @@
+# all git ignore files
+# Node modules
+node_modules/
+.env
