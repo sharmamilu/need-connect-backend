@@ -4,6 +4,9 @@ const {
   createPortfolio,
   getMyPortfolio,
   updatePortfolio,
+    getPortfolios,
+    getSuggestions,
+    getPortfolioById
 } = require("../controllers/portfolio.controller");
 
 const router = express.Router();
@@ -11,5 +14,8 @@ const router = express.Router();
 router.post("/", authMiddleware, createPortfolio);
 router.get("/me", authMiddleware, getMyPortfolio);
 router.put("/", authMiddleware, updatePortfolio);
+router.get("/", getPortfolios);
+router.get("/suggestions", getSuggestions);
+router.get("/:id", getPortfolioById);
 
 module.exports = router;
