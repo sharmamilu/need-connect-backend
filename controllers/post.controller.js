@@ -1,5 +1,6 @@
 const postService = require("../services/post.service");
 
+
 exports.createPost = async (req, res, next) => {
   try {
     const post = await postService.createPost(req.user.id, req.body);
@@ -47,6 +48,41 @@ exports.getFeed = async (req, res, next) => {
       success: true,
       ...data,
         count: data.total,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.deletePost = async (req, res, next) => {
+  try {
+    const { postId } = req.params;
+    await postService.deletePost(req.user.id, postId);
+
+    res.json({
+      success: true,
+      message: "Post deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getPostsByUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    const data = await postService.getUserPosts(
+      userId,
+      Number(page),
+      Number(limit)
+    );
+
+    res.json({
+      success: true,
+      ...data,
+      count: data.total,
     });
   } catch (error) {
     next(error);

@@ -1,6 +1,7 @@
 const Post = require("../models/post.model");
 const Portfolio = require("../models/portfolio.model");
 const User = require("../models/user.model");
+const cloudinary = require("../utils/cloudinary");
 
 exports.createPost = async (userId, data) => {
   // Accept `images` array or single `image` string (backwards compatible)
@@ -85,4 +86,43 @@ exports.updateUserPostsSnapshot = async (userId, updateData) => {
   if (Object.keys(updateFields).length > 0) {
     await Post.updateMany({ user: userId }, { $set: updateFields });
   }
+};
+
+// Helper function to extract Cloudinary public ID from URL
+const extractPublicIdFromUrl = (url) => {
+  if (!url) return null;
+  // Cloudinary URLs look like: https://res.cloudinary.com/cloud_name/image/upload/v123/public_id.extension
+  const match = url.match(/\/([^\/]+)\.[a-z]+$/);
+  return match ? match[1] : null;
+};
+
+exports.deletePost = async (userId, postId) => {
+  const post = await Post.findById(postId);
+
+  if (!post) {
+    throw new Error("Post not found");
+  }
+
+  // Verify post belongs to user
+  if (post.user.toString() !== userId) {
+    throw new Error("Unauthorized to delete this post");
+  }
+
+  // Delete images from Cloudinary
+  if (post.images && post.images.length > 0) {
+    for (const imageUrl of post.images) {
+      const publicId = extractPublicIdFromUrl(imageUrl);
+      if (publicId) {
+        try {
+          await cloudinary.uploader.destroy(publicId);
+        } catch (error) {
+          console.error(`Failed to delete Cloudinary image ${publicId}:`, error);
+          // Don't throw error, continue with post deletion
+        }
+      }
+    }
+  }
+
+  // Delete post from database
+  await Post.findByIdAndDelete(postId);
 };
