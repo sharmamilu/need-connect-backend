@@ -24,4 +24,10 @@ router.post(
   uploadMultipleImages
 );
 
+router.post(
+  "/post",
+  authMiddleware,
+  upload.array("images", 6),
+  uploadMultipleImages
+);
 module.exports = router;

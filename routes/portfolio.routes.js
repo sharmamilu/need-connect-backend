@@ -14,8 +14,8 @@ const router = express.Router();
 router.post("/", authMiddleware, createPortfolio);
 router.get("/me", authMiddleware, getMyPortfolio);
 router.put("/", authMiddleware, updatePortfolio);
-router.get("/", getPortfolios);
-router.get("/suggestions", getSuggestions);
-router.get("/:id", getPortfolioById);
+router.get("/", authMiddleware, getPortfolios);
+router.get("/suggestions", authMiddleware, getSuggestions);
+router.get("/:id", authMiddleware, getPortfolioById);
 
 module.exports = router;
