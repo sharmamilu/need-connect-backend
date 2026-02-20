@@ -71,6 +71,10 @@ const portfolioSchema = new mongoose.Schema(
       of: String,
       default: {},
     },
+
+    backgroundStyle: {
+      type: String,
+    },
   },
   { timestamps: true },
 );

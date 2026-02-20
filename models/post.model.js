@@ -38,6 +38,10 @@ const postSchema = new mongoose.Schema(
       default: 0,
     },
 
+    backgroundStyle: {
+      type: String,
+    },
+
     // snapshot of posting user at creation time
     userImage: {
       type: String,

@@ -24,6 +24,7 @@ exports.createPost = async (userId, data) => {
     userImage: portfolio ? portfolio.profilePhoto : undefined,
     userProfession: portfolio ? portfolio.profession : undefined,
     userName: user ? user.name : undefined,
+    backgroundStyle: data.backgroundStyle,
   });
 };
 
@@ -64,4 +65,24 @@ exports.getFeedPosts = async (page = 1, limit = 10) => {
     page,
     totalPages: Math.ceil(total / limit),
   };
+};
+
+exports.updateUserPostsSnapshot = async (userId, updateData) => {
+  // When portfolio is updated, sync changes to all posts for this user
+  const updateFields = {};
+
+  if (updateData.profilePhoto !== undefined) {
+    updateFields.userImage = updateData.profilePhoto;
+  }
+  if (updateData.profession !== undefined) {
+    updateFields.userProfession = updateData.profession;
+  }
+  if (updateData.backgroundStyle !== undefined) {
+    updateFields.backgroundStyle = updateData.backgroundStyle;
+  }
+
+  // Only update if there are fields to update
+  if (Object.keys(updateFields).length > 0) {
+    await Post.updateMany({ user: userId }, { $set: updateFields });
+  }
 };

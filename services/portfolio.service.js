@@ -1,4 +1,5 @@
 const Portfolio = require("../models/portfolio.model");
+const postService = require("./post.service");
 
 exports.createPortfolio = async (userId, data) => {
   const existing = await Portfolio.findOne({ user: userId });
@@ -58,6 +59,9 @@ exports.updatePortfolio = async (userId, data) => {
 
   Object.assign(portfolio, data);
   await portfolio.save();
+
+  // sync changes to all user's posts
+  await postService.updateUserPostsSnapshot(userId, data);
 
   return portfolio;
 };
