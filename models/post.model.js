@@ -37,6 +37,18 @@ const postSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    // snapshot of posting user at creation time
+    userImage: {
+      type: String,
+    },
+    userProfession: {
+      type: String,
+    },
+
+    userName: {
+      type: String,
+    },
   },
   { timestamps: true }
 );

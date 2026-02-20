@@ -1,4 +1,6 @@
 const Post = require("../models/post.model");
+const Portfolio = require("../models/portfolio.model");
+const User = require("../models/user.model");
 
 exports.createPost = async (userId, data) => {
   // Accept `images` array or single `image` string (backwards compatible)
@@ -8,11 +10,20 @@ exports.createPost = async (userId, data) => {
   // Normalize and filter out falsy values
   const images = imagesInput.map(String).map((s) => s.trim()).filter((s) => s);
 
+  // grab a snapshot of the user's profile that we need on the frontend
+  const [portfolio, user] = await Promise.all([
+    Portfolio.findOne({ user: userId }, "profilePhoto profession"),
+    User.findById(userId, "name"),
+  ]);
+
   return await Post.create({
     user: userId,
     description: data.description,
     images,
     tags: data.tags || [],
+    userImage: portfolio ? portfolio.profilePhoto : undefined,
+    userProfession: portfolio ? portfolio.profession : undefined,
+    userName: user ? user.name : undefined,
   });
 };
 
@@ -37,8 +48,10 @@ exports.getUserPosts = async (userId, page = 1, limit = 10) => {
 exports.getFeedPosts = async (page = 1, limit = 10) => {
   const skip = (page - 1) * limit;
 
+  // posts now contain their own snapshot data, population is optional for name only
   const posts = await Post.find()
-    .populate("user", "name profilePhoto")
+    // if front-end still needs the user's name, you can populate here
+    // .populate("user", "name")
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);
