@@ -122,3 +122,46 @@ exports.toggleCommentLikeService = async (commentId, userId) => {
     return { liked: true };
   }
 };
+
+exports.deleteCommentService = async (commentId, userId) => {
+  const comment = await Comment.findById(commentId);
+  if (!comment) throw new Error("Comment not found");
+
+  const post = await Post.findById(comment.post);
+  if (!post) throw new Error("Post not found");
+
+  // Check permissions: comment owner OR post owner
+  const isCommentOwner = comment.user.toString() === userId.toString();
+  const isPostOwner = post.user.toString() === userId.toString();
+
+  if (!isCommentOwner && !isPostOwner) {
+    const err = new Error("Not authorized to delete this comment");
+    err.status = 403;
+    throw err;
+  }
+
+  // Find all nested replies recursively to delete them as well cleanly
+  const idsToDelete = [commentId.toString()];
+  let currentLevelIds = [commentId.toString()];
+
+  while (currentLevelIds.length > 0) {
+    const children = await Comment.find({ parentComment: { $in: currentLevelIds } }, "_id");
+    const childIds = children.map((c) => c._id.toString());
+    
+    if (childIds.length === 0) break;
+    
+    idsToDelete.push(...childIds);
+    currentLevelIds = childIds;
+  }
+
+  // Execute deletion
+  await Comment.deleteMany({ _id: { $in: idsToDelete } });
+  await CommentLike.deleteMany({ comment: { $in: idsToDelete } });
+
+  // Mitigate post's comments count
+  await Post.findByIdAndUpdate(comment.post, {
+    $inc: { commentsCount: -idsToDelete.length },
+  });
+
+  return { deletedCount: idsToDelete.length };
+};

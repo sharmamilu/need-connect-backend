@@ -3,6 +3,7 @@ const {
   createCommentService,
   getPostCommentsService,
   toggleCommentLikeService,
+  deleteCommentService,
 } = require("../services/comment.service");
 
 exports.createComment = asyncHandler(async (req, res) => {
@@ -49,5 +50,21 @@ exports.toggleCommentLike = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     liked: result.liked,
+  });
+});
+
+exports.deleteComment = asyncHandler(async (req, res) => {
+  const { commentId } = req.params;
+
+  if (!commentId) {
+    return res.status(400).json({ success: false, message: "commentId is required in URL" });
+  }
+
+  const result = await deleteCommentService(commentId, req.user.id);
+
+  res.status(200).json({
+    success: true,
+    message: "Comment deleted successfully",
+    deletedCount: result.deletedCount,
   });
 });

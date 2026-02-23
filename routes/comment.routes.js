@@ -3,6 +3,7 @@ const {
   createComment,
   getPostComments,
   toggleCommentLike,
+  deleteComment,
 } = require("../controllers/comment.controller");
 const protect = require("../middlewares/auth.middleware");
 const optionalAuth = require("../middlewares/optionalAuth.middleware");
@@ -14,5 +15,8 @@ router.post("/:postId", protect, createComment);
 
 // Toggle comment like
 router.post("/:commentId/like", protect, toggleCommentLike);
+
+// Delete comment
+router.delete("/:commentId", protect, deleteComment);
 
 module.exports = router;
