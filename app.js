@@ -10,6 +10,7 @@ const portfolioRoutes = require("./routes/portfolio.routes");
 const uploadRoutes = require("./routes/upload.routes");
 const postRoutes = require("./routes/post.routes");
 const likeRoutes = require("./routes/like.routes");
+const commentRoutes = require("./routes/comment.routes");
 
 
 const app = express();
@@ -29,6 +30,7 @@ app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/likes", likeRoutes);
+app.use("/api/comments", commentRoutes);
 
 
 
