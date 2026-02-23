@@ -29,15 +29,34 @@ exports.createPost = async (userId, data) => {
   });
 };
 
-exports.getUserPosts = async (userId, page = 1, limit = 10) => {
+const Like = require("../models/like.model");
+
+// helper to flag array of posts with like status for a given user
+async function annotateLikeStatus(posts, userId) {
+  if (!userId || posts.length === 0) return posts;
+  const postIds = posts.map(p => p._id);
+  const likes = await Like.find({ post: { $in: postIds }, user: userId }).select('post');
+  const likedSet = new Set(likes.map(l => l.post.toString()));
+  return posts.map(p => {
+    const obj = p.toObject ? p.toObject() : p;
+    obj.liked = likedSet.has(p._id.toString());
+    return obj;
+  });
+}
+
+exports.getUserPosts = async (userId, page = 1, limit = 10, currentUserId) => {
   const skip = (page - 1) * limit;
 
-  const posts = await Post.find({ user: userId })
+  let posts = await Post.find({ user: userId })
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);
 
   const total = await Post.countDocuments({ user: userId });
+
+  if (currentUserId) {
+    posts = await annotateLikeStatus(posts, currentUserId);
+  }
 
   return {
     posts,
@@ -47,11 +66,11 @@ exports.getUserPosts = async (userId, page = 1, limit = 10) => {
   };
 };
 
-exports.getFeedPosts = async (page = 1, limit = 10) => {
+exports.getFeedPosts = async (page = 1, limit = 10, currentUserId) => {
   const skip = (page - 1) * limit;
 
   // posts now contain their own snapshot data, population is optional for name only
-  const posts = await Post.find()
+  let posts = await Post.find()
     // if front-end still needs the user's name, you can populate here
     // .populate("user", "name")
     .sort({ createdAt: -1 })
@@ -59,6 +78,10 @@ exports.getFeedPosts = async (page = 1, limit = 10) => {
     .limit(limit);
 
   const total = await Post.countDocuments();
+
+  if (currentUserId) {
+    posts = await annotateLikeStatus(posts, currentUserId);
+  }
 
   return {
     posts,

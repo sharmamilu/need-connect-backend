@@ -22,7 +22,8 @@ exports.getMyPosts = async (req, res, next) => {
     const data = await postService.getUserPosts(
       req.user.id,
       Number(page),
-      Number(limit)
+      Number(limit),
+      req.user.id
     );
 
     res.json({
@@ -41,7 +42,8 @@ exports.getFeed = async (req, res, next) => {
 
     const data = await postService.getFeedPosts(
       Number(page),
-      Number(limit)
+      Number(limit),
+      req.user ? req.user.id : undefined
     );
 
     res.json({

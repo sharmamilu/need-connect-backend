@@ -66,6 +66,18 @@ const portfolioSchema = new mongoose.Schema(
       default: [],
     },
 
+    experience: [
+      {
+        id: String,
+        role: String,
+        company: String,
+        startDate: String,
+        endDate: String,
+        description: String,
+        currentlyWorking: Boolean,
+      },
+    ],
+
     links: {
       type: Map,
       of: String,
