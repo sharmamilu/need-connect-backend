@@ -11,14 +11,17 @@ const uploadRoutes = require("./routes/upload.routes");
 const postRoutes = require("./routes/post.routes");
 const likeRoutes = require("./routes/like.routes");
 const commentRoutes = require("./routes/comment.routes");
-
+const reviewRoutes = require("./routes/review.routes");
 
 const app = express();
 
 // DB
 connectDB();
 
-console.log("the request is coming to the server from the route named ", process.env.PORT);
+console.log(
+  "the request is coming to the server from the route named ",
+  process.env.PORT,
+);
 // Middlewares
 app.use(cors());
 app.use(express.json());
@@ -31,8 +34,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/likes", likeRoutes);
 app.use("/api/comments", commentRoutes);
-
-
+app.use("/api/reviews", reviewRoutes);
 
 // Error Handler
 app.use(errorMiddleware);
