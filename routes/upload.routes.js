@@ -13,21 +13,21 @@ router.post(
   "/profile",
   authMiddleware,
   upload.single("image"),
-  uploadSingleImage
+  uploadSingleImage,
 );
 
 // Portfolio gallery
 router.post(
   "/gallery",
   authMiddleware,
-  upload.array("images", 6),
-  uploadMultipleImages
+  upload.array("images", 8),
+  uploadMultipleImages,
 );
 
 router.post(
   "/post",
   authMiddleware,
-  upload.array("images", 6),
-  uploadMultipleImages
+  upload.array("images", 8),
+  uploadMultipleImages,
 );
 module.exports = router;

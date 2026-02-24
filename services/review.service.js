@@ -113,11 +113,26 @@ exports.getUserReviewsService = async (userId, page = 1, limit = 10) => {
 };
 
 exports.getUserRatingStatsService = async (userId) => {
-  const user = await User.findById(userId, "averageRating totalReviews");
+  const [user, portfolio] = await Promise.all([
+    User.findById(userId, "averageRating totalReviews"),
+    require("../models/portfolio.model")
+      .findOne({ user: userId })
+      .select("profilePhoto"),
+  ]);
+
   if (!user) throw new Error("User not found");
 
   return {
     averageRating: user.averageRating || 0,
     totalReviews: user.totalReviews || 0,
+    profilePhoto: portfolio?.profilePhoto || null,
   };
+};
+
+exports.updateReviewerPhotoSnapshot = async (userId, profilePhotoUrl) => {
+  // Purposefully blank.
+  // Reviews already dynamically fetch the portfolio photo of the reviewer at runtime
+  // inside `getUserReviewsService`. This hook exists purely for scalable architectural parity
+  // with `post.service.js` if review model caching is implemented in the future.
+  return true;
 };

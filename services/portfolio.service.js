@@ -14,7 +14,11 @@ exports.createPortfolio = async (userId, data) => {
   if (!data.profession) throw new Error("Profession is required");
   if (!data.bio) throw new Error("Bio is required");
 
-  if (!data.services || !Array.isArray(data.services) || data.services.length === 0)
+  if (
+    !data.services ||
+    !Array.isArray(data.services) ||
+    data.services.length === 0
+  )
     throw new Error("At least one service is required");
 
   if (!data.skills || !Array.isArray(data.skills) || data.skills.length === 0)
@@ -31,7 +35,7 @@ exports.createPortfolio = async (userId, data) => {
 exports.getMyPortfolio = async (userId) => {
   return Portfolio.findOne({ user: userId }).populate(
     "user",
-    "name phone role"
+    "name phone role",
   );
 };
 
@@ -43,12 +47,18 @@ exports.updatePortfolio = async (userId, data) => {
   }
 
   // Validate fields if they are being updated
-  if (data.name === "" || data.name === null) throw new Error("Name is required");
-  if (data.location === "" || data.location === null) throw new Error("Location is required");
-  if (data.profession === "" || data.profession === null) throw new Error("Profession is required");
+  if (data.name === "" || data.name === null)
+    throw new Error("Name is required");
+  if (data.location === "" || data.location === null)
+    throw new Error("Location is required");
+  if (data.profession === "" || data.profession === null)
+    throw new Error("Profession is required");
   if (data.bio === "" || data.bio === null) throw new Error("Bio is required");
 
-  if (data.services && (!Array.isArray(data.services) || data.services.length === 0))
+  if (
+    data.services &&
+    (!Array.isArray(data.services) || data.services.length === 0)
+  )
     throw new Error("At least one service is required");
 
   if (data.skills && (!Array.isArray(data.skills) || data.skills.length === 0))
@@ -57,11 +67,20 @@ exports.updatePortfolio = async (userId, data) => {
   if (data.contact && (!data.contact.countryCode || !data.contact.phone))
     throw new Error("Contact countryCode and phone are required");
 
+  const isPhotoChanged =
+    data.profilePhoto && data.profilePhoto !== portfolio.profilePhoto;
+
   Object.assign(portfolio, data);
   await portfolio.save();
 
   // sync changes to all user's posts
   await postService.updateUserPostsSnapshot(userId, data);
+
+  // sync changes to all user's reviews ONLY if photo specifically changed
+  if (isPhotoChanged) {
+    const reviewService = require("./review.service");
+    await reviewService.updateReviewerPhotoSnapshot(userId, data.profilePhoto);
+  }
 
   return portfolio;
 };
