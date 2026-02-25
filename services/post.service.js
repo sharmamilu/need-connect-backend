@@ -38,19 +38,25 @@ exports.createPost = async (userId, data) => {
 };
 
 const Like = require("../models/like.model");
+const SavedPost = require("../models/savedPost.model");
 
-// helper to flag array of posts with like status for a given user
-async function annotateLikeStatus(posts, userId) {
+// helper to flag array of posts with like and save status for a given user
+async function annotatePostStatus(posts, userId) {
   if (!userId || posts.length === 0) return posts;
   const postIds = posts.map((p) => p._id);
-  const likes = await Like.find({
-    post: { $in: postIds },
-    user: userId,
-  }).select("post");
+
+  const [likes, saves] = await Promise.all([
+    Like.find({ post: { $in: postIds }, user: userId }).select("post"),
+    SavedPost.find({ post: { $in: postIds }, user: userId }).select("post"),
+  ]);
+
   const likedSet = new Set(likes.map((l) => l.post.toString()));
+  const savedSet = new Set(saves.map((s) => s.post.toString()));
+
   return posts.map((p) => {
     const obj = p.toObject ? p.toObject() : p;
     obj.liked = likedSet.has(p._id.toString());
+    obj.saved = savedSet.has(p._id.toString());
     return obj;
   });
 }
@@ -59,14 +65,14 @@ exports.getUserPosts = async (userId, page = 1, limit = 10, currentUserId) => {
   const skip = (page - 1) * limit;
 
   let posts = await Post.find({ user: userId })
-    .sort({ createdAt: -1 })
+    .sort({ isPinned: -1, createdAt: -1 }) // Pinned posts surface to the top of the user profile!
     .skip(skip)
     .limit(limit);
 
   const total = await Post.countDocuments({ user: userId });
 
   if (currentUserId) {
-    posts = await annotateLikeStatus(posts, currentUserId);
+    posts = await annotatePostStatus(posts, currentUserId);
   }
 
   return {
@@ -75,6 +81,57 @@ exports.getUserPosts = async (userId, page = 1, limit = 10, currentUserId) => {
     page,
     totalPages: Math.ceil(total / limit),
   };
+};
+
+// ... SAVE & PIN FEATURES ...
+
+exports.toggleSavePostService = async (postId, userId) => {
+  const existingSave = await SavedPost.findOne({ post: postId, user: userId });
+  if (existingSave) {
+    await SavedPost.deleteOne({ _id: existingSave._id });
+    return { saved: false };
+  } else {
+    await SavedPost.create({ post: postId, user: userId });
+    return { saved: true };
+  }
+};
+
+exports.getSavedPostsService = async (userId, page = 1, limit = 10) => {
+  const skip = (page - 1) * limit;
+
+  const savedDocs = await SavedPost.find({ user: userId })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .populate("post");
+
+  const total = await SavedPost.countDocuments({ user: userId });
+
+  // Extract posts and filter out any dissolved (deleted) documents
+  let posts = savedDocs.map((doc) => doc.post).filter(Boolean);
+
+  posts = await annotatePostStatus(posts, userId);
+
+  return {
+    posts,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  };
+};
+
+exports.togglePinPostService = async (postId, userId) => {
+  const post = await Post.findById(postId);
+  if (!post) throw new Error("Post not found");
+
+  if (post.user.toString() !== userId.toString()) {
+    throw new Error("Unauthorized: You can only pin your own posts");
+  }
+
+  post.isPinned = !post.isPinned;
+  await post.save();
+
+  return { isPinned: post.isPinned };
 };
 
 exports.getFeedPosts = async (page = 1, limit = 10, currentUserId) => {
@@ -134,7 +191,7 @@ exports.getFeedPosts = async (page = 1, limit = 10, currentUserId) => {
   let posts = postsObj.map((p) => new Post(p));
 
   if (currentUserId) {
-    posts = await annotateLikeStatus(posts, currentUserId);
+    posts = await annotatePostStatus(posts, currentUserId);
   }
 
   return {

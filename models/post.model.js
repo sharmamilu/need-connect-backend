@@ -38,6 +38,11 @@ const postSchema = new mongoose.Schema(
       default: 0,
     },
 
+    isPinned: {
+      type: Boolean,
+      default: false,
+    },
+
     backgroundStyle: {
       type: String,
     },
@@ -54,7 +59,7 @@ const postSchema = new mongoose.Schema(
       type: String,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Indexing for feed & search
