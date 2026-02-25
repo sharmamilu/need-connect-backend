@@ -1,15 +1,23 @@
 const Post = require("../models/post.model");
 const Portfolio = require("../models/portfolio.model");
 const User = require("../models/user.model");
+const Preference = require("../models/preference.model");
 const cloudinary = require("../utils/cloudinary");
 
 exports.createPost = async (userId, data) => {
   // Accept `images` array or single `image` string (backwards compatible)
-  const imagesInput = Array.isArray(data.images) ? data.images : data.images ? [data.images] : [];
+  const imagesInput = Array.isArray(data.images)
+    ? data.images
+    : data.images
+      ? [data.images]
+      : [];
   if (data.image) imagesInput.push(data.image);
 
   // Normalize and filter out falsy values
-  const images = imagesInput.map(String).map((s) => s.trim()).filter((s) => s);
+  const images = imagesInput
+    .map(String)
+    .map((s) => s.trim())
+    .filter((s) => s);
 
   // grab a snapshot of the user's profile that we need on the frontend
   const [portfolio, user] = await Promise.all([
@@ -34,10 +42,13 @@ const Like = require("../models/like.model");
 // helper to flag array of posts with like status for a given user
 async function annotateLikeStatus(posts, userId) {
   if (!userId || posts.length === 0) return posts;
-  const postIds = posts.map(p => p._id);
-  const likes = await Like.find({ post: { $in: postIds }, user: userId }).select('post');
-  const likedSet = new Set(likes.map(l => l.post.toString()));
-  return posts.map(p => {
+  const postIds = posts.map((p) => p._id);
+  const likes = await Like.find({
+    post: { $in: postIds },
+    user: userId,
+  }).select("post");
+  const likedSet = new Set(likes.map((l) => l.post.toString()));
+  return posts.map((p) => {
     const obj = p.toObject ? p.toObject() : p;
     obj.liked = likedSet.has(p._id.toString());
     return obj;
@@ -69,15 +80,58 @@ exports.getUserPosts = async (userId, page = 1, limit = 10, currentUserId) => {
 exports.getFeedPosts = async (page = 1, limit = 10, currentUserId) => {
   const skip = (page - 1) * limit;
 
-  // posts now contain their own snapshot data, population is optional for name only
-  let posts = await Post.find()
-    // if front-end still needs the user's name, you can populate here
-    // .populate("user", "name")
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
+  let sortCriteria = { createdAt: -1 };
+  let matchPipelineStage = null;
 
+  if (currentUserId) {
+    const pref = await Preference.findOne({ user: currentUserId });
+    if (pref && pref.feedType === "recommended") {
+      const prefTags = [...(pref.skills || []), ...(pref.locations || [])]
+        .map((t) => t.trim())
+        .filter(Boolean);
+
+      if (prefTags.length > 0) {
+        // Create an array of $regexMatch expressions for each preferred tag
+        const regexMatches = prefTags.map((tag) => ({
+          $regexMatch: { input: "$$postTag", regex: tag, options: "i" },
+        }));
+
+        matchPipelineStage = {
+          $addFields: {
+            matchScore: {
+              $size: {
+                $filter: {
+                  input: { $ifNull: ["$tags", []] },
+                  as: "postTag",
+                  cond: { $or: regexMatches },
+                },
+              },
+            },
+          },
+        };
+        // Sort by matchScore descending first, then newest
+        sortCriteria = { matchScore: -1, createdAt: -1 };
+      }
+    }
+  }
+
+  const pipeline = [];
+
+  // Add scoring dynamically if recommended preferences are set
+  if (matchPipelineStage) {
+    pipeline.push(matchPipelineStage);
+  }
+
+  pipeline.push({ $sort: sortCriteria });
+  pipeline.push({ $skip: skip });
+  pipeline.push({ $limit: limit });
+
+  // Use aggregation to fetch
+  let postsObj = await Post.aggregate(pipeline);
   const total = await Post.countDocuments();
+
+  // Re-hydrate full mongoose models to keep compatible with your annotate methods
+  let posts = postsObj.map((p) => new Post(p));
 
   if (currentUserId) {
     posts = await annotateLikeStatus(posts, currentUserId);
@@ -139,7 +193,10 @@ exports.deletePost = async (userId, postId) => {
         try {
           await cloudinary.uploader.destroy(publicId);
         } catch (error) {
-          console.error(`Failed to delete Cloudinary image ${publicId}:`, error);
+          console.error(
+            `Failed to delete Cloudinary image ${publicId}:`,
+            error,
+          );
           // Don't throw error, continue with post deletion
         }
       }

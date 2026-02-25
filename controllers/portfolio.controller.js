@@ -6,7 +6,7 @@ exports.createPortfolio = async (req, res, next) => {
   try {
     const portfolio = await portfolioService.createPortfolio(
       req.user._id,
-      req.body
+      req.body,
     );
 
     res.status(201).json({
@@ -36,7 +36,7 @@ exports.updatePortfolio = async (req, res, next) => {
   try {
     const portfolio = await portfolioService.updatePortfolio(
       req.user._id,
-      req.body
+      req.body,
     );
 
     res.status(200).json({
@@ -53,47 +53,130 @@ exports.updatePortfolio = async (req, res, next) => {
   }
 };
 
-
-
 exports.getPortfolios = async (req, res) => {
   try {
-    const escapeRegex = (s = "") => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
     let { page = 1, limit = 10, skill, profession, location, q } = req.query;
 
     page = Math.max(parseInt(page), 1);
-    limit = Math.min(parseInt(limit), 50); // cap limit to prevent abuse
+    limit = Math.min(parseInt(limit), 50);
 
     const filter = {};
 
-    // Unified full-text search (uses text index defined on model)
+    // 1. FUZZY MATCH LOGIC
     if (q && String(q).trim().length > 0) {
-      const search = String(q).trim().slice(0, 200); // cap length
-      filter.$text = { $search: search };
+      filter.$text = { $search: String(q).trim().slice(0, 200) };
     } else {
-      // If `skill` is provided, match against skills, services and profession safely
       if (skill && String(skill).trim().length > 0) {
-        const s = escapeRegex(String(skill).trim().slice(0, 100));
+        const s = String(skill)
+          .trim()
+          .replace(/[,\s]+/g, ".*")
+          .slice(0, 100);
         const regex = { $regex: s, $options: "i" };
-        filter.$or = [{ skills: regex }, { services: regex }, { profession: regex }];
+        filter.$or = [
+          { skills: regex },
+          { services: regex },
+          { profession: regex },
+        ];
       }
 
       if (profession && String(profession).trim().length > 0) {
-        filter.profession = { $regex: escapeRegex(String(profession).trim().slice(0, 100)), $options: "i" };
+        const s = String(profession)
+          .trim()
+          .replace(/[,\s]+/g, ".*")
+          .slice(0, 100);
+        filter.profession = { $regex: s, $options: "i" };
       }
 
       if (location && String(location).trim().length > 0) {
-        filter.location = { $regex: escapeRegex(String(location).trim().slice(0, 100)), $options: "i" };
+        // Fuzzy location match! "Banglore Karnataka" will now safely match "Banglore, Karnataka"
+        const s = String(location)
+          .trim()
+          .replace(/[,\s]+/g, ".*")
+          .slice(0, 100);
+        filter.location = { $regex: s, $options: "i" };
       }
     }
 
-    // Count documents matching filter
     const total = await Portfolio.countDocuments(filter);
+    const skip = (page - 1) * limit;
 
-    // Build query with projection and sorting. Hide contact in list view for privacy.
-    let query = Portfolio.find(filter, filter.$text ? { score: { $meta: "textScore" } } : {})
+    // 2. PREFERENCE SCORING LOGIC
+    const isSearchEmpty = !q && !skill && !profession && !location;
+
+    if (isSearchEmpty && req.user) {
+      const Preference = require("../models/preference.model");
+      const pref = await Preference.findOne({ user: req.user._id });
+
+      if (pref && pref.feedType === "recommended") {
+        const prefTags = [...(pref.skills || []), ...(pref.locations || [])]
+          .map((t) => t.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+          .filter(Boolean);
+
+        if (prefTags.length > 0) {
+          const regexMatches = prefTags.map((tag) => ({
+            $regexMatch: { input: "$$sk", regex: tag, options: "i" },
+          }));
+          const generalRegex = prefTags.join("|");
+
+          const pipeline = [
+            { $match: filter },
+            {
+              $addFields: {
+                matchScore: {
+                  $add: [
+                    {
+                      $size: {
+                        $filter: {
+                          input: { $ifNull: ["$skills", []] },
+                          as: "sk",
+                          cond: { $or: regexMatches },
+                        },
+                      },
+                    },
+                    {
+                      $cond: [
+                        {
+                          $regexMatch: {
+                            input: { $ifNull: ["$location", ""] },
+                            regex: generalRegex,
+                            options: "i",
+                          },
+                        },
+                        2,
+                        0,
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+            { $sort: { matchScore: -1, createdAt: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+            { $project: { contact: 0 } }, // exclude contact for privacy exactly like standard get portflios
+          ];
+
+          const portfolios = await Portfolio.aggregate(pipeline);
+
+          return res.json({
+            data: portfolios,
+            pagination: {
+              total,
+              page,
+              pages: Math.ceil(total / limit),
+            },
+          });
+        }
+      }
+    }
+
+    // 3. STANDARD FALLBACK FETCH LOGIC
+    let query = Portfolio.find(
+      filter,
+      filter.$text ? { score: { $meta: "textScore" } } : {},
+    )
       .select("-contact")
-      .skip((page - 1) * limit)
+      .skip(skip)
       .limit(limit)
       .lean();
 
@@ -118,7 +201,6 @@ exports.getPortfolios = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 exports.getSuggestions = async (req, res) => {
   try {
@@ -185,8 +267,7 @@ exports.getPortfolioById = async (req, res) => {
       return res.status(400).json({ message: "Invalid portfolio ID" });
     }
 
-    const portfolio = await Portfolio.findById(id)
-      .lean();
+    const portfolio = await Portfolio.findById(id).lean();
 
     if (!portfolio) {
       return res.status(404).json({ message: "Portfolio not found" });
