@@ -15,6 +15,7 @@ const postRoutes = require("./routes/post.routes");
 const likeRoutes = require("./routes/like.routes");
 const commentRoutes = require("./routes/comment.routes");
 const reviewRoutes = require("./routes/review.routes");
+const listingRoutes = require("./routes/listing.routes");
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use("/api/posts", postRoutes);
 app.use("/api/likes", likeRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/listings", listingRoutes);
 
 // Error Handler
 app.use(errorMiddleware);
