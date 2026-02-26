@@ -23,6 +23,15 @@ connectDB();
 // Set security HTTP headers
 app.use(helmet());
 
+// CORS configuration - Must be before rate limiting and routes
+// This setup allows all origins dynamically and supports credentials
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  }),
+);
+
 // Rate limiting (basic security against DDoS and brute force)
 const limiter = rateLimit({
   max: 1000, // Limit each IP to 1000 requests per windowMs
@@ -36,7 +45,6 @@ const limiter = rateLimit({
 app.use("/api", limiter);
 
 // Middlewares
-app.use(cors());
 app.use(express.json({ limit: "50mb" })); // Increased to 50mb to support large image arrays via Base64 if used
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
