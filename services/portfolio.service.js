@@ -84,3 +84,66 @@ exports.updatePortfolio = async (userId, data) => {
 
   return portfolio;
 };
+
+const SavedPortfolio = require("../models/savedPortfolio.model");
+
+exports.annotateSavedStatus = async (portfolios, userId) => {
+  if (!userId || portfolios.length === 0) return portfolios;
+  const portfolioIds = portfolios.map((p) => p._id);
+
+  const saves = await SavedPortfolio.find({
+    portfolio: { $in: portfolioIds },
+    user: userId,
+  }).select("portfolio");
+  const savedSet = new Set(saves.map((s) => s.portfolio.toString()));
+
+  return portfolios.map((p) => {
+    // Handling mongoose docs or lean plain objects seamlessly
+    const obj = p.toObject ? p.toObject() : p;
+    obj.saved = savedSet.has(obj._id.toString());
+    return obj;
+  });
+};
+
+exports.toggleSavePortfolioService = async (portfolioId, userId) => {
+  const existingSave = await SavedPortfolio.findOne({
+    portfolio: portfolioId,
+    user: userId,
+  });
+  if (existingSave) {
+    await SavedPortfolio.deleteOne({ _id: existingSave._id });
+    return { saved: false };
+  } else {
+    await SavedPortfolio.create({ portfolio: portfolioId, user: userId });
+    return { saved: true };
+  }
+};
+
+exports.getSavedPortfoliosService = async (userId, page = 1, limit = 10) => {
+  const skip = (page - 1) * limit;
+
+  const savedDocs = await SavedPortfolio.find({ user: userId })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .populate("portfolio");
+
+  const total = await SavedPortfolio.countDocuments({ user: userId });
+
+  // Extract portfolios and filter out any dissolved (deleted) documents
+  let portfolios = savedDocs.map((doc) => doc.portfolio).filter(Boolean);
+
+  // Tag them all as saved since they came directly from the saves table
+  portfolios = portfolios.map((p) => {
+    const obj = p.toObject ? p.toObject() : p;
+    obj.saved = true;
+    return obj;
+  });
+
+  return {
+    portfolios,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  };
+};

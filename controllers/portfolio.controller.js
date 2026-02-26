@@ -156,7 +156,14 @@ exports.getPortfolios = async (req, res) => {
             { $project: { contact: 0 } }, // exclude contact for privacy exactly like standard get portflios
           ];
 
-          const portfolios = await Portfolio.aggregate(pipeline);
+          let portfolios = await Portfolio.aggregate(pipeline);
+
+          if (req.user) {
+            portfolios = await portfolioService.annotateSavedStatus(
+              portfolios,
+              req.user._id,
+            );
+          }
 
           return res.json({
             data: portfolios,
@@ -186,7 +193,14 @@ exports.getPortfolios = async (req, res) => {
       query = query.sort({ createdAt: -1 });
     }
 
-    const portfolios = await query.exec();
+    let portfolios = await query.exec();
+
+    if (req.user) {
+      portfolios = await portfolioService.annotateSavedStatus(
+        portfolios,
+        req.user._id,
+      );
+    }
 
     res.json({
       data: portfolios,
@@ -267,15 +281,58 @@ exports.getPortfolioById = async (req, res) => {
       return res.status(400).json({ message: "Invalid portfolio ID" });
     }
 
-    const portfolio = await Portfolio.findById(id).lean();
+    let portfolio = await Portfolio.findById(id).lean();
 
     if (!portfolio) {
       return res.status(404).json({ message: "Portfolio not found" });
+    }
+
+    if (req.user) {
+      const annotated = await portfolioService.annotateSavedStatus(
+        [portfolio],
+        req.user._id,
+      );
+      portfolio = annotated[0];
     }
 
     res.json(portfolio);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.toggleSavePortfolio = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await portfolioService.toggleSavePortfolioService(
+      id,
+      req.user._id,
+    );
+    res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getSavedPortfolios = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const data = await portfolioService.getSavedPortfoliosService(
+      req.user._id,
+      Number(page),
+      Number(limit),
+    );
+    res.json({
+      success: true,
+      data: data.portfolios,
+      pagination: {
+        total: data.total,
+        page: data.page,
+        pages: data.totalPages,
+      },
+    });
+  } catch (error) {
+    next(error);
   }
 };
