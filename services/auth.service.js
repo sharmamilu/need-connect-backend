@@ -15,7 +15,7 @@ exports.login = async ({ phone, password }) => {
     throw new Error("Invalid phone or password");
   }
 
-  const token = generateToken({id: user._id});
+  const token = generateToken({ id: user._id });
 
   return {
     token,
@@ -24,12 +24,14 @@ exports.login = async ({ phone, password }) => {
       name: user.name,
       phone: user.phone,
       email: user.email,
+      countryCode: user.countryCode,
+      dateOfBirth: user.dateOfBirth,
     },
   };
 };
 
 exports.register = async (data) => {
-  const { name, phone, email, password } = data;
+  const { name, phone, email, password, countryCode, dateOfBirth } = data;
 
   const existingUser = await User.findOne({ phone });
   if (existingUser) {
@@ -42,6 +44,8 @@ exports.register = async (data) => {
     name,
     phone,
     email,
+    countryCode,
+    dateOfBirth,
     password: hashedPassword,
   });
 
@@ -50,5 +54,7 @@ exports.register = async (data) => {
     name: user.name,
     phone: user.phone,
     email: user.email,
+    countryCode: user.countryCode,
+    dateOfBirth: user.dateOfBirth,
   };
 };
