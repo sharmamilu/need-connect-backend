@@ -26,7 +26,7 @@ exports.createListing = async (req, res, next) => {
 
     // Creating the final formatted Listing object to be saved
     const listingData = {
-      author: req.user.userId, // Appended by our authMiddleware
+      author: req.user._id, // Appended by our authMiddleware
       title,
       category,
       listingType,
