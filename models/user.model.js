@@ -15,6 +15,11 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    userRole: {
+      type: String,
+      default: "user",
+      enum: ["user", "admin"], // Defining generic roles
+    },
   },
   { timestamps: true },
 );
