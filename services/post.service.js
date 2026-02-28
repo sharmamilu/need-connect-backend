@@ -144,8 +144,12 @@ exports.togglePinPostService = async (postId, userId) => {
 exports.getFeedPosts = async (page = 1, limit = 10, currentUserId) => {
   const skip = (page - 1) * limit;
 
+  const pipeline = [];
+
+  // Always only show Active posts
+  pipeline.push({ $match: { status: "Active" } });
+
   let sortCriteria = { createdAt: -1 };
-  let matchPipelineStage = { $match: { status: "Active" } }; // Only show actively approved posts
 
   if (currentUserId) {
     const pref = await Preference.findOne({ user: currentUserId });
@@ -160,8 +164,8 @@ exports.getFeedPosts = async (page = 1, limit = 10, currentUserId) => {
           $regexMatch: { input: "$$postTag", regex: tag, options: "i" },
         }));
 
-        matchPipelineStage = {
-          $match: { status: "Active" }, // Retain the basic filter inside the score logic
+        // Add scoring stage dynamically if recommended preferences are set
+        pipeline.push({
           $addFields: {
             matchScore: {
               $size: {
@@ -173,18 +177,12 @@ exports.getFeedPosts = async (page = 1, limit = 10, currentUserId) => {
               },
             },
           },
-        };
+        });
+
         // Sort by matchScore descending first, then newest
         sortCriteria = { matchScore: -1, createdAt: -1 };
       }
     }
-  }
-
-  const pipeline = [];
-
-  // Add scoring dynamically if recommended preferences are set
-  if (matchPipelineStage) {
-    pipeline.push(matchPipelineStage);
   }
 
   pipeline.push({ $sort: sortCriteria });
