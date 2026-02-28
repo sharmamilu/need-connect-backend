@@ -37,6 +37,17 @@ const listingSchema = new mongoose.Schema(
         message: "{VALUE} is not a supported listing type",
       },
     },
+    userImage: {
+      type: String,
+    },
+    userProfession: {
+      type: String,
+    },
+    userName: {
+      type: String,
+      required: [true, "User name is required"],
+      trim: true,
+    },
     price: {
       type: String,
       required: [true, "Price is required"],
@@ -75,8 +86,12 @@ const listingSchema = new mongoose.Schema(
     ],
     status: {
       type: String,
-      enum: ["Active", "Sold", "Archived"],
-      default: "Active",
+      enum: ["Pending", "Active", "Sold", "Archived", "Rejected"],
+      default: "Pending",
+    },
+    rejectionReason: {
+      type: String,
+      default: null,
     },
   },
   { timestamps: true },

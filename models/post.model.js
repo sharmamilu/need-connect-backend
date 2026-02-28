@@ -51,12 +51,19 @@ const postSchema = new mongoose.Schema(
     userImage: {
       type: String,
     },
-    userProfession: {
+    userName: {
       type: String,
     },
 
-    userName: {
+    status: {
       type: String,
+      enum: ["Pending", "Active", "Rejected"],
+      default: "Pending",
+    },
+
+    rejectionReason: {
+      type: String,
+      default: null,
     },
   },
   { timestamps: true },
