@@ -17,6 +17,7 @@ const commentRoutes = require("./routes/comment.routes");
 const reviewRoutes = require("./routes/review.routes");
 const listingRoutes = require("./routes/listing.routes");
 const adminRoutes = require("./routes/admin.routes");
+const documentRoutes = require("./routes/document.routes");
 
 const app = express();
 
@@ -62,6 +63,7 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/listings", listingRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/documents", documentRoutes);
 
 // Error Handler
 app.use(errorMiddleware);
