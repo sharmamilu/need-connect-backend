@@ -1,5 +1,11 @@
 const express = require("express");
-const { register, login } = require("../controllers/auth.controller");
+const {
+  register,
+  login,
+  forgotPassword,
+  verifyResetCode,
+  resetPassword,
+} = require("../controllers/auth.controller");
 
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
@@ -16,5 +22,8 @@ const authLimiter = rateLimit({
 
 router.post("/register", authLimiter, register);
 router.post("/login", authLimiter, login);
+router.post("/forgot-password", authLimiter, forgotPassword);
+router.post("/verify-reset-code", authLimiter, verifyResetCode);
+router.post("/reset-password", authLimiter, resetPassword);
 
 module.exports = router;
