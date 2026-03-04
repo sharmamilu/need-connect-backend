@@ -3,8 +3,8 @@ const mongoose = require("mongoose");
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    phone: { type: String, required: true, unique: true },
-    email: { type: String },
+    phone: { type: String },
+    email: { type: String, required: true, unique: true },
     dateOfBirth: { type: String },
     countryCode: { type: String, default: "+1" },
     password: { type: String, required: true },
@@ -21,6 +21,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "user",
       enum: ["user", "admin"], // Defining generic roles
+    },
+    resetPasswordToken: {
+      type: String,
+    },
+    resetPasswordExpires: {
+      type: Date,
     },
   },
   { timestamps: true },
