@@ -16,6 +16,8 @@ exports.createListing = async (req, res, next) => {
       price,
       description,
       address,
+      lat,
+      lng,
       contactInfo,
       condition,
       images,
@@ -50,6 +52,13 @@ exports.createListing = async (req, res, next) => {
       userName: user ? user.name : undefined,
     };
 
+    if (lat && lng) {
+      listingData.location = {
+        type: "Point",
+        coordinates: [parseFloat(lng), parseFloat(lat)],
+      };
+    }
+
     const newListing = await Listing.create(listingData);
 
     res.status(201).json({
@@ -73,7 +82,15 @@ exports.createListing = async (req, res, next) => {
 // @access  Public (or Private depending on your need, making it public here like typical marketplaces)
 exports.getListings = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, search, category } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      category,
+      lat,
+      lng,
+      radius,
+    } = req.query;
 
     const query = { status: "Active" }; // We only want ACTIVE ones
 
@@ -83,6 +100,18 @@ exports.getListings = async (req, res, next) => {
 
     if (category) {
       query.category = category;
+    }
+
+    if (lat && lng && radius) {
+      query.location = {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(lng), parseFloat(lat)],
+          },
+          $maxDistance: parseInt(radius) * 1000,
+        },
+      };
     }
 
     const limitNum = parseInt(limit, 10);

@@ -64,6 +64,17 @@ const listingSchema = new mongoose.Schema(
       required: [true, "Address is required"],
       trim: true,
     },
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        index: "2dsphere",
+      },
+    },
     contactInfo: {
       type: String,
       required: [true, "Contact information is required"],
@@ -97,7 +108,12 @@ const listingSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Optional: Indexing for faster search queries (if search functionality is needed on title/description)
-listingSchema.index({ title: "text", description: "text", category: 1 });
+// Optional: Indexing for faster search queries
+listingSchema.index({
+  title: "text",
+  description: "text",
+  address: "text",
+});
+listingSchema.index({ category: 1 });
 
 module.exports = mongoose.model("Listing", listingSchema);
