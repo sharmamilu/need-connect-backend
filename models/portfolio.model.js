@@ -23,8 +23,8 @@ const portfolioSchema = new mongoose.Schema(
     },
 
     contact: {
-        countryCode: { type: String, required: true },
-        phone: { type: String, required: true },
+      countryCode: { type: String, required: true },
+      phone: { type: String, required: true },
     },
     email: {
       type: String,
@@ -37,6 +37,10 @@ const portfolioSchema = new mongoose.Schema(
     bio: {
       type: String,
       required: true,
+    },
+
+    personalDetails: {
+      type: String, // Multi-line field for Languages, Hobbies, etc.
     },
 
     services: {
@@ -91,7 +95,6 @@ const portfolioSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-
 portfolioSchema.index({ location: 1 });
 portfolioSchema.index({ profession: 1 });
 portfolioSchema.index({ skills: 1 });
@@ -105,6 +108,5 @@ portfolioSchema.index({
   skills: "text",
   services: "text",
 });
-
 
 module.exports = mongoose.model("Portfolio", portfolioSchema);
