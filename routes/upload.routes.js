@@ -24,8 +24,6 @@ router.post(
   uploadMultipleImages,
 );
 
-router.post("/post", authMiddleware, uploadMultipleImages);
-
 router.post(
   "/listing",
   authMiddleware,
@@ -36,7 +34,7 @@ router.post(
 router.post(
   "/post",
   authMiddleware,
-  upload.array("images", 8),
+  upload.array("images", 10),
   uploadMultipleImages,
 );
 
