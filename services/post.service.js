@@ -64,12 +64,19 @@ async function annotatePostStatus(posts, userId) {
 exports.getUserPosts = async (userId, page = 1, limit = 10, currentUserId) => {
   const skip = (page - 1) * limit;
 
-  let posts = await Post.find({ user: userId })
+  // If the user is viewing their OWN profile, show all posts (Pending, Active, Rejected).
+  // If they are viewing someone ELSE'S profile (or not logged in), show only Active posts.
+  const query = { user: userId };
+  if (!currentUserId || userId.toString() !== currentUserId.toString()) {
+    query.status = "Active";
+  }
+
+  let posts = await Post.find(query)
     .sort({ isPinned: -1, createdAt: -1 }) // Pinned posts surface to the top of the user profile!
     .skip(skip)
     .limit(limit);
 
-  const total = await Post.countDocuments({ user: userId });
+  const total = await Post.countDocuments(query);
 
   if (currentUserId) {
     posts = await annotatePostStatus(posts, currentUserId);
@@ -137,8 +144,12 @@ exports.togglePinPostService = async (postId, userId) => {
 exports.getFeedPosts = async (page = 1, limit = 10, currentUserId) => {
   const skip = (page - 1) * limit;
 
+  const pipeline = [];
+
+  // Always only show Active posts
+  pipeline.push({ $match: { status: "Active" } });
+
   let sortCriteria = { createdAt: -1 };
-  let matchPipelineStage = null;
 
   if (currentUserId) {
     const pref = await Preference.findOne({ user: currentUserId });
@@ -153,7 +164,8 @@ exports.getFeedPosts = async (page = 1, limit = 10, currentUserId) => {
           $regexMatch: { input: "$$postTag", regex: tag, options: "i" },
         }));
 
-        matchPipelineStage = {
+        // Add scoring stage dynamically if recommended preferences are set
+        pipeline.push({
           $addFields: {
             matchScore: {
               $size: {
@@ -165,18 +177,12 @@ exports.getFeedPosts = async (page = 1, limit = 10, currentUserId) => {
               },
             },
           },
-        };
+        });
+
         // Sort by matchScore descending first, then newest
         sortCriteria = { matchScore: -1, createdAt: -1 };
       }
     }
-  }
-
-  const pipeline = [];
-
-  // Add scoring dynamically if recommended preferences are set
-  if (matchPipelineStage) {
-    pipeline.push(matchPipelineStage);
   }
 
   pipeline.push({ $sort: sortCriteria });
@@ -185,7 +191,7 @@ exports.getFeedPosts = async (page = 1, limit = 10, currentUserId) => {
 
   // Use aggregation to fetch
   let postsObj = await Post.aggregate(pipeline);
-  const total = await Post.countDocuments();
+  const total = await Post.countDocuments({ status: "Active" });
 
   // Re-hydrate full mongoose models to keep compatible with your annotate methods
   let posts = postsObj.map((p) => new Post(p));

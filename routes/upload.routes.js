@@ -24,17 +24,13 @@ router.post(
   uploadMultipleImages,
 );
 
+router.post("/post", authMiddleware, uploadMultipleImages);
+
 router.post(
-  "/post",
+  "/listing",
   authMiddleware,
-  upload.array("images", 10),
+  upload.array("images", 10), // Adjust maxCount if you need more/less
   uploadMultipleImages,
 );
 
-router.post(
-  "/post",
-  authMiddleware,
-  upload.array("images", 8),
-  uploadMultipleImages,
-);
 module.exports = router;

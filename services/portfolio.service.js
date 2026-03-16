@@ -76,6 +76,10 @@ exports.updatePortfolio = async (userId, data) => {
   // sync changes to all user's posts
   await postService.updateUserPostsSnapshot(userId, data);
 
+  // sync changes to all user's listings
+  const listingController = require("../controllers/listing.controller");
+  await listingController.updateListingSnapshot(userId, data);
+
   // sync changes to all user's reviews ONLY if photo specifically changed
   if (isPhotoChanged) {
     const reviewService = require("./review.service");

@@ -15,7 +15,7 @@ const commentLikeSchema = new mongoose.Schema(
       index: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Prevent duplicate likes from same user on same comment

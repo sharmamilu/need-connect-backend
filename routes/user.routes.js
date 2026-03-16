@@ -4,6 +4,7 @@ const {
   getPreferences,
   updatePreferences,
 } = require("../controllers/preference.controller");
+const { deleteMyAccount } = require("../controllers/user.controller");
 
 const router = express.Router();
 
@@ -18,5 +19,7 @@ router.get("/me", authMiddleware, (req, res) => {
     user: req.user,
   });
 });
+
+router.delete("/me", authMiddleware, deleteMyAccount);
 
 module.exports = router;
