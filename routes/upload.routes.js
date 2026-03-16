@@ -27,6 +27,13 @@ router.post(
 router.post(
   "/post",
   authMiddleware,
+  upload.array("images", 10),
+  uploadMultipleImages,
+);
+
+router.post(
+  "/post",
+  authMiddleware,
   upload.array("images", 8),
   uploadMultipleImages,
 );
