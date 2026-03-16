@@ -29,7 +29,14 @@ router.post("/post", authMiddleware, uploadMultipleImages);
 router.post(
   "/listing",
   authMiddleware,
-  upload.array("images", 10), // Adjust maxCount if you need more/less
+  upload.array("images", 10),
+  uploadMultipleImages,
+);
+
+router.post(
+  "/post",
+  authMiddleware,
+  upload.array("images", 8),
   uploadMultipleImages,
 );
 
