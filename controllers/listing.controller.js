@@ -118,7 +118,7 @@ exports.getListings = async (req, res, next) => {
     const skip = (parseInt(page, 10) - 1) * limitNum;
 
     const listings = await Listing.find(query)
-      .populate("author", "name avatarUrl _id") // Providing brief seller info
+      .populate("author", "name _id") // Providing brief seller info
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);
@@ -155,13 +155,24 @@ exports.getSingleListing = async (req, res, next) => {
 
     const listing = await Listing.findById(id).populate(
       "author",
-      "name avatarUrl email _id", // Detailed author information for single view
+      "name email _id", // Detailed author information for single view
     );
 
     if (!listing) {
       return res
         .status(404)
         .json({ success: false, error: "Listing not found" });
+    }
+
+    // Ensure userImage is provided if available, fetching from portfolio if snapshot is missing
+    if (!listing.userImage && listing.author) {
+      const portfolio = await Portfolio.findOne(
+        { user: listing.author._id },
+        "profilePhoto",
+      );
+      if (portfolio) {
+        listing.userImage = portfolio.profilePhoto;
+      }
     }
 
     res.status(200).json({
@@ -197,7 +208,7 @@ exports.getUserListings = async (req, res, next) => {
     const skip = (parseInt(page, 10) - 1) * limitNum;
 
     const listings = await Listing.find(query)
-      .populate("author", "name avatarUrl _id")
+      .populate("author", "name _id")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);
@@ -282,5 +293,23 @@ exports.deleteListing = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+// @desc    Update listing snapshots for a user (when portfolio changes)
+exports.updateListingSnapshot = async (userId, updateData) => {
+  const updateFields = {};
+
+  if (updateData.profilePhoto !== undefined) {
+    updateFields.userImage = updateData.profilePhoto;
+  }
+  if (updateData.profession !== undefined) {
+    updateFields.userProfession = updateData.profession;
+  }
+  if (updateData.name !== undefined) {
+    updateFields.userName = updateData.name;
+  }
+
+  if (Object.keys(updateFields).length > 0) {
+    await Listing.updateMany({ author: userId }, { $set: updateFields });
   }
 };

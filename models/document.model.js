@@ -19,7 +19,7 @@ const documentSchema = new mongoose.Schema(
     },
 
     // A mixed object to catch all the dynamic frontend fields
-    // (e.g. { title, amount, dueDate, experience, education, timeline, etc. })
+    // (e.g. { title, amount, dueDate, experience, education, personalDetails, etc. })
     formData: {
       type: Map,
       of: mongoose.Schema.Types.Mixed,
