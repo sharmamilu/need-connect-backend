@@ -27,7 +27,26 @@ exports.createPortfolio = async (userId, data) => {
   if (!data.contact || !data.contact.countryCode || !data.contact.phone)
     throw new Error("Contact countryCode and phone are required");
 
-  const portfolio = await Portfolio.create({ user: userId, ...data });
+  const portfolio = await Portfolio.create({
+    user: userId,
+    name: data.name,
+    profilePhoto: data.profilePhoto,
+    location: data.location,
+    contact: {
+      countryCode: data.contact.countryCode,
+      phone: data.contact.phone,
+    },
+    email: data.email,
+    profession: data.profession,
+    bio: data.bio,
+    personalDetails: data.personalDetails,
+    services: data.services,
+    skills: data.skills,
+    gallery: data.gallery || [],
+    experience: data.experience || [],
+    links: data.links || {},
+    backgroundStyle: data.backgroundStyle,
+  });
 
   return portfolio;
 };
@@ -70,20 +89,43 @@ exports.updatePortfolio = async (userId, data) => {
   const isPhotoChanged =
     data.profilePhoto && data.profilePhoto !== portfolio.profilePhoto;
 
-  Object.assign(portfolio, data);
+  // Mass assignment protection: whitelist specific fields
+  const allowedFields = [
+    "name",
+    "profilePhoto",
+    "location",
+    "contact",
+    "email",
+    "profession",
+    "bio",
+    "personalDetails",
+    "services",
+    "skills",
+    "gallery",
+    "experience",
+    "links",
+    "backgroundStyle",
+  ];
+
+  allowedFields.forEach((field) => {
+    if (data[field] !== undefined) {
+      portfolio[field] = data[field];
+    }
+  });
+
   await portfolio.save();
 
   // sync changes to all user's posts
-  await postService.updateUserPostsSnapshot(userId, data);
+  await postService.updateUserPostsSnapshot(userId, portfolio);
 
   // sync changes to all user's listings
   const listingController = require("../controllers/listing.controller");
-  await listingController.updateListingSnapshot(userId, data);
+  await listingController.updateListingSnapshot(userId, portfolio);
 
   // sync changes to all user's reviews ONLY if photo specifically changed
   if (isPhotoChanged) {
     const reviewService = require("./review.service");
-    await reviewService.updateReviewerPhotoSnapshot(userId, data.profilePhoto);
+    await reviewService.updateReviewerPhotoSnapshot(userId, portfolio.profilePhoto);
   }
 
   return portfolio;

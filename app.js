@@ -37,10 +37,24 @@ connectDB();
 app.use(helmet());
 
 // CORS configuration - Must be before rate limiting and routes
-// This setup allows all origins dynamically and supports credentials
+// Allows requests with no origin (mobile apps/Postman) and whitelists browser origins
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+  : ["http://localhost:8081", "http://localhost:19006"]; // Default development URLs
+
 app.use(
   cors({
-    origin: true,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like native mobile apps, curl, or Postman)
+      if (!origin) return callback(null, true);
+
+      // Check if the origin is whitelisted or if we are in development mode
+      if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== "production") {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   }),
 );
