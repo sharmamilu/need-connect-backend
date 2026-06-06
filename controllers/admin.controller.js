@@ -6,13 +6,27 @@ const Listing = require("../models/listing.model");
 // @access  Private/Admin
 exports.getPendingPosts = async (req, res, next) => {
   try {
+    const { page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
     const posts = await Post.find({ status: "Pending" })
       .populate("user", "name _id")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await Post.countDocuments({ status: "Pending" });
 
     res.status(200).json({
       success: true,
       count: posts.length,
+      pagination: {
+        total,
+        page: pageNum,
+        pages: Math.ceil(total / limitNum),
+      },
       data: posts,
     });
   } catch (error) {
@@ -72,13 +86,27 @@ exports.updatePostStatus = async (req, res, next) => {
 // @access  Private/Admin
 exports.getPendingListings = async (req, res, next) => {
   try {
+    const { page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
     const listings = await Listing.find({ status: "Pending" })
       .populate("author", "name _id")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await Listing.countDocuments({ status: "Pending" });
 
     res.status(200).json({
       success: true,
       count: listings.length,
+      pagination: {
+        total,
+        page: pageNum,
+        pages: Math.ceil(total / limitNum),
+      },
       data: listings,
     });
   } catch (error) {
