@@ -284,7 +284,25 @@ exports.getPortfolioById = async (req, res) => {
       .lean();
 
     if (!portfolio) {
-      return res.status(404).json({ message: "Portfolio not found" });
+      const User = require("../models/user.model");
+      const userObj = await User.findById(id).select("name phone userRole").lean();
+      if (userObj) {
+        portfolio = {
+          _id: id, // use the id as portfolio _id for keyExtractor
+          user: userObj,
+          name: userObj.name,
+          location: "Not specified",
+          profession: "Member",
+          bio: "This user hasn't created a portfolio yet.",
+          skills: [],
+          services: [],
+          gallery: [],
+          experience: [],
+          links: new Map()
+        };
+      } else {
+        return res.status(404).json({ message: "Portfolio not found" });
+      }
     }
 
     if (req.user) {
