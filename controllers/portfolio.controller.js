@@ -46,10 +46,6 @@ exports.updatePortfolio = async (req, res, next) => {
     });
   } catch (err) {
     next(err);
-    res.status(400).json({
-      success: false,
-      message: err.message || "Something went wrong",
-    });
   }
 };
 

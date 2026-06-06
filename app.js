@@ -1,6 +1,16 @@
 const express = require("express");
 const cors = require("cors");
-require("dotenv").config();
+const fs = require("fs");
+const path = require("path");
+const dotenv = require("dotenv");
+
+const envPath = path.join(__dirname, ".env");
+if (fs.existsSync(envPath)) {
+  const envConfig = dotenv.parse(fs.readFileSync(envPath));
+  for (const k in envConfig) {
+    process.env[k] = envConfig[k];
+  }
+}
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const mongoSanitize = require("express-mongo-sanitize");
@@ -39,9 +49,15 @@ app.use(
 const limiter = rateLimit({
   max: 1000, // Limit each IP to 1000 requests per windowMs
   windowMs: 15 * 60 * 1000, // 15 minutes
-  message: "Too many requests from this IP, please try again later.",
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Respond with JSON so API clients can always parse the body.
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      message: "Too many requests from this IP, please try again later.",
+    });
+  },
 });
 
 // Apply rate limiting specifically to all dynamic API routes

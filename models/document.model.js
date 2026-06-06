@@ -7,10 +7,13 @@ const documentSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    // templateType is a frontend-driven identifier (e.g. invoice, receipt,
+    // payslip, nda, coverletter, ...). Kept as a free string so new templates
+    // can be added in the app without a backend migration.
     templateType: {
       type: String,
       required: true,
-      enum: ["invoice", "quotation", "proposal", "contract", "resume"],
+      trim: true,
     },
     designStyle: {
       type: String,

@@ -313,3 +313,67 @@ exports.updateListingSnapshot = async (userId, updateData) => {
     await Listing.updateMany({ author: userId }, { $set: updateFields });
   }
 };
+
+// @desc    Get suggested listings based on user's portfolio skills/services/profession
+// @route   GET /api/listings/suggested
+// @access  Private
+exports.getSuggestedOpportunities = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    // 1. Fetch user's portfolio
+    const portfolio = await Portfolio.findOne({ user: userId });
+
+    let query = { status: "Active", author: { $ne: userId } };
+
+    if (portfolio) {
+      const keywords = [];
+      if (portfolio.profession) keywords.push(portfolio.profession);
+      if (portfolio.skills && portfolio.skills.length > 0) {
+        keywords.push(...portfolio.skills);
+      }
+      if (portfolio.services && portfolio.services.length > 0) {
+        keywords.push(...portfolio.services);
+      }
+
+      if (keywords.length > 0) {
+        // Create a text search query matching user profession/skills/services
+        query.$text = { $search: keywords.join(" ") };
+      }
+    } else {
+      // Default fallback to "Services" category
+      query.category = "Services";
+    }
+
+    let listings = [];
+    if (portfolio) {
+      // Try matching by portfolio first
+      listings = await Listing.find(query)
+        .populate("author", "name _id")
+        .sort({ score: { $meta: "textScore" }, createdAt: -1 })
+        .limit(4);
+    }
+
+    // 2. If no matched listings or no portfolio, fall back to general active listings
+    if (listings.length === 0) {
+      const fallbackQuery = { status: "Active", author: { $ne: userId } };
+      // Prefer Services category for gigs/opportunities, but fall back to anything if empty
+      const servicesCount = await Listing.countDocuments({ ...fallbackQuery, category: "Services" });
+      if (servicesCount > 0) {
+        fallbackQuery.category = "Services";
+      }
+      listings = await Listing.find(fallbackQuery)
+        .populate("author", "name _id")
+        .sort({ createdAt: -1 })
+        .limit(4);
+    }
+
+    res.status(200).json({
+      success: true,
+      count: listings.length,
+      data: listings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -3,7 +3,18 @@ const crypto = require("crypto");
 const User = require("../models/user.model");
 const { generateToken } = require("../utils/jwt");
 const { sendEmail } = require("./email.service");
+
+// Emails are stored/compared in a normalized form (trimmed + lowercased)
+// so that "John@X.com" and "john@x.com" are treated as the same account.
+const normalizeEmail = (email) => (email || "").trim().toLowerCase();
+
 exports.login = async ({ email, password }) => {
+  email = normalizeEmail(email);
+
+  if (!email || !password) {
+    throw new Error("Email and password are required");
+  }
+
   const user = await User.findOne({ email });
 
   if (!user) {
@@ -32,7 +43,18 @@ exports.login = async ({ email, password }) => {
 };
 
 exports.register = async (data) => {
-  const { name, phone, email, password, countryCode, dateOfBirth } = data;
+  const { name, phone, password, countryCode, dateOfBirth } = data;
+  const email = normalizeEmail(data.email);
+
+  if (!name || !name.trim()) {
+    throw new Error("Full name is required");
+  }
+  if (!email) {
+    throw new Error("Email address is required");
+  }
+  if (!password || password.length < 6) {
+    throw new Error("Password must be at least 6 characters");
+  }
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
@@ -42,7 +64,7 @@ exports.register = async (data) => {
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const user = await User.create({
-    name,
+    name: name.trim(),
     phone,
     email,
     countryCode,
@@ -61,6 +83,7 @@ exports.register = async (data) => {
 };
 
 exports.forgotPassword = async (email) => {
+  email = normalizeEmail(email);
   const user = await User.findOne({ email });
 
   if (!user) {
@@ -110,6 +133,7 @@ exports.forgotPassword = async (email) => {
 };
 
 exports.verifyResetCode = async (email, code) => {
+  email = normalizeEmail(email);
   // Hash the incoming code to compare it with the one in the database
   const hashedCode = crypto.createHash("sha256").update(code).digest("hex");
 
@@ -128,6 +152,11 @@ exports.verifyResetCode = async (email, code) => {
 };
 
 exports.resetPassword = async (email, code, newPassword) => {
+  email = normalizeEmail(email);
+
+  if (!newPassword || newPassword.length < 6) {
+    throw new Error("Password must be at least 6 characters");
+  }
   // Hash the incoming token to compare it with the one in the database
   const hashedCode = crypto.createHash("sha256").update(code).digest("hex");
 
