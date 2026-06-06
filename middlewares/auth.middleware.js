@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
+const { generateToken } = require("../utils/jwt");
 
 module.exports = async (req, res, next) => {
   try {
@@ -27,6 +28,11 @@ module.exports = async (req, res, next) => {
 
     // Attach user to request
     req.user = user;
+
+    // Extend session automatically on active requests (sliding window)
+    const newToken = generateToken({ id: user._id });
+    res.setHeader("x-new-token", newToken);
+    res.setHeader("Access-Control-Expose-Headers", "x-new-token");
 
     next();
   } catch (error) {

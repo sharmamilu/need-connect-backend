@@ -21,11 +21,31 @@ exports.login = async ({ email, password }) => {
     throw new Error("Invalid email or password");
   }
 
+  // Check if account is currently locked
+  if (user.lockUntil && user.lockUntil > Date.now()) {
+    const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / (60 * 1000));
+    throw new Error(`Account is temporarily locked. Try again in ${minutesLeft} minutes.`);
+  }
+
   const isMatch = await bcrypt.compare(password, user.password);
 
   if (!isMatch) {
-    throw new Error("Invalid email or password");
+    user.loginAttempts = (user.loginAttempts || 0) + 1;
+    if (user.loginAttempts >= 5) {
+      user.lockUntil = Date.now() + 30 * 60 * 1000; // 30 minutes lockout
+      await user.save();
+      throw new Error("Account locked due to 5 failed login attempts. Try again in 30 minutes.");
+    } else {
+      await user.save();
+      const remaining = 5 - user.loginAttempts;
+      throw new Error(`Invalid email or password. You have ${remaining} attempts remaining.`);
+    }
   }
+
+  // Reset lock state on successful login
+  user.loginAttempts = 0;
+  user.lockUntil = undefined;
+  await user.save();
 
   const token = generateToken({ id: user._id });
 

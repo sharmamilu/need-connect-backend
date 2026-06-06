@@ -28,6 +28,14 @@ const userSchema = new mongoose.Schema(
     resetPasswordExpires: {
       type: Date,
     },
+    loginAttempts: {
+      type: Number,
+      default: 0,
+      required: true,
+    },
+    lockUntil: {
+      type: Date,
+    },
   },
   { timestamps: true },
 );
