@@ -277,7 +277,11 @@ exports.getPortfolioById = async (req, res) => {
       return res.status(400).json({ message: "Invalid portfolio ID" });
     }
 
-    let portfolio = await Portfolio.findById(id).lean();
+    let portfolio = await Portfolio.findOne({
+      $or: [{ _id: id }, { user: id }],
+    })
+      .populate("user", "name phone userRole")
+      .lean();
 
     if (!portfolio) {
       return res.status(404).json({ message: "Portfolio not found" });
